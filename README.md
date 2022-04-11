@@ -30,7 +30,7 @@ Thus far, I haven't actually implemented FFT, instead opting for a preliminary n
 
 ```
 cd src
-./benchmark
+./run_benchmark
 ```
 
 ### MacOS
