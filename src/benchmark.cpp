@@ -1,23 +1,16 @@
-#define EIGEN_FFTW_DEFAULT
-
 #include <iostream>
-#include <algorithm>
-#include <ctime>
 #include "fft.hpp"
-#include "timer.hpp"
 #include <fftw3.h>
-// #include "../lib/eigen-3.4.0/unsupported/Eigen/FFT"
-// #include "Eigen3/unsupported/Eigen/FFT"
-// #include <unsupported/Eigen/FFT>
 
-
-#define NUM_POINTS 1000
+#define NUM_POINTS 1024
 
 #include <stdio.h>
 #include <math.h>
 
 #define REAL 0
 #define IMAG 1
+
+#include <benchmark/benchmark.h>
 
 void acquire_from_somewhere(fftw_complex* signal) {
     /* Generate two sine waves of different frequencies and
@@ -46,56 +39,127 @@ void do_something_with(fftw_complex* result) {
     }
 }
 
+static void BM_naive_dft(benchmark::State& state) {
+	fftw_complex signal[NUM_POINTS];
+	acquire_from_somewhere(signal);
+	std::vector<std::complex<double>> a(NUM_POINTS);
+	std::vector<std::complex<double>> b(NUM_POINTS);
+	for (int i = 0; i < NUM_POINTS; i++) a[i] = {signal[i][0], signal[i][1]};	
+	FFT<double> fft;
+	for (auto _ : state) {
+		fft.naive_fwd(a, b);
+	}
+}
 
-int main() {
-	Timer t;
 
-	FFT<float> naive_fft;
-	
-	std::srand(unsigned(std::time(nullptr)));
-	std::vector<float> a(1000);
-	std::generate(a.begin(), a.end(), std::rand);
+static void BM_ditfft2_fwd(benchmark::State& state) {
+	fftw_complex signal[NUM_POINTS];
+	acquire_from_somewhere(signal);
+	std::vector<std::complex<double>> a(NUM_POINTS);
+	std::vector<std::complex<double>> b(NUM_POINTS);
+	for (int i = 0; i < NUM_POINTS; i++) a[i] = {signal[i][0], signal[i][1]};	
+	FFT<double> fft;
+	for (auto _ : state) {
+		fft.ditfft2_fwd(a, b);
+	}
+}
 
-	// std::cout << "The first 10 elements of vector a are ";
-	// for (int i = 0; i < 10; i++) std::cout << a[i] << ' ';
-	// std::cout << std::endl;
+static void BM_iter_dit_fft2_fwd(benchmark::State& state) {
+	fftw_complex signal[NUM_POINTS];
+	acquire_from_somewhere(signal);
+	std::vector<std::complex<double>> a(NUM_POINTS);
+	std::vector<std::complex<double>> b(NUM_POINTS);
+	for (int i = 0; i < NUM_POINTS; i++) a[i] = {signal[i][0], signal[i][1]};	
+	FFT<double> fft;
+	for (auto _ : state) {
+		fft.iter_ditfft2_fwd(a, b);
+	}
+}
 
-	std::vector<std::complex<float>> b(1000);
+static void BM_fftw(benchmark::State& state) {
+	fftw_complex signal[NUM_POINTS];
+	fftw_complex result[NUM_POINTS];
 
-	auto t1 = t.elapsed();
-	naive_fft.naive_fwd(a, b);
-	auto t2 = t.elapsed() - t1;
-	std::cout << "time for naive dft is " << t2 << std::endl;
+	fftw_plan plan = fftw_plan_dft_1d(NUM_POINTS,
+								   signal,
+								   result,
+								   FFTW_FORWARD,
+								   FFTW_ESTIMATE);
+	acquire_from_somewhere(signal);
+	for (auto _ : state) {
+		fftw_execute(plan);
+	}
+    fftw_destroy_plan(plan);
+}
 
-	// std::cout << "The first 10 elements of vector b are ";
-	// for (int i = 0; i < 10; i++) std::cout << b[i] << ' ';
-	// std::cout << std::endl;
-	
+// int main() {
+	// Timer t;
+	// FFT<double> fft;
 
+	// fftw_complex signal[NUM_POINTS];
+    // fftw_complex result[NUM_POINTS];
+
+	// fftw_plan plan = fftw_plan_dft_1d(NUM_POINTS,
+    //                                   signal,
+    //                                   result,
+    //                                   FFTW_FORWARD,
+    //                                   FFTW_ESTIMATE);
+    // acquire_from_somewhere(signal);
+
+	// // copy a from signal
+	// std::vector<std::complex<double>> a(NUM_POINTS);
+	// for (int i = 0; i < NUM_POINTS; i++) {
+	// 	a[i] = {signal[i][0], signal[i][1]};	
+	// }
+	// 
+	// std::cout << "The first 10 elements of vector a are:" << std::endl;
+	// for (int i = 0; i < 10; i++) std::cout << a[i] << std::endl;
+
+	// // naive dft
+	// std::vector<std::complex<double>> b(NUM_POINTS);
+
+	// auto t1 = t.elapsed();
+	// fft.naive_fwd(a, b);
+	// auto t2 = t.elapsed() - t1;
+	// std::cout << "time for naive dft x 10 is " << t2 << std::endl;
+
+	// std::cout << "The first 10 elements of vector b are:" << std::endl;
+	// for (int i = 0; i < 10; i++) std::cout << b[i] << std::endl;
+	// 
+	// // recursive fft
+	// std::vector<std::complex<double>> c(NUM_POINTS);
 
 	// t1 = t.elapsed();
-	// fft.fwd(freqvec,a);
-	// t2 = t.elapsed() - t1;
-	// std::cout << "time for Eigen fft is " << t2 << std::endl;
+	// for (int i = 0; i < 10; i++) 
+	// 	fft.ditfft2_fwd(a, c);
+	// auto t3 = t.elapsed() - t1;
+	// std::cout << "time for recursive fft x 10 is " << t3 << std::endl;
 
+	// std::cout << "The first 10 elements of vector c are:" << std::endl;
+	// for (int i = 0; i < 10; i++) std::cout << c[i] << std::endl;
+	// 
 
-	fftw_complex signal[NUM_POINTS];
-    fftw_complex result[NUM_POINTS];
+	// // the gold standard, fftw
+	// t1 = t.elapsed();
+	// for (int i = 0; i < 10; i++) 
+	// 	fftw_execute(plan);
+	// auto t4 = t.elapsed() - t1;
+	// std::cout << "time for fftw x 10 is " << t4 << std::endl;
 
-    fftw_plan plan = fftw_plan_dft_1d(NUM_POINTS,
-                                      signal,
-                                      result,
-                                      FFTW_FORWARD,
-                                      FFTW_ESTIMATE);
+	// std::cout << "The first 10 elements of array result are:" << std::endl;
+	// for (int i = 0; i < 10; i++) std::cout << result[i][0] << ", " << result[i][1] << std::endl;
 
-    acquire_from_somewhere(signal);
+    // fftw_destroy_plan(plan);
 
-	t1 = t.elapsed();
-    fftw_execute(plan);
-	t2 = t.elapsed() - t1;
-	std::cout << "time for fftw is " << t2 << std::endl;
+	// std::cout << "(naive dft) / (fftw) = " << t2/t4 << std::endl;
+	// std::cout << "(recursive fft) / (fftw) = " << t3/t4 << std::endl;
 
-    fftw_destroy_plan(plan);
+	// return 0;
+// }
 
-	return 0;
-}
+BENCHMARK(BM_naive_dft);
+BENCHMARK(BM_ditfft2_fwd);
+BENCHMARK(BM_iter_dit_fft2_fwd);
+BENCHMARK(BM_fftw);
+
+BENCHMARK_MAIN();

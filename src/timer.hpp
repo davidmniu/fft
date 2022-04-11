@@ -1,3 +1,6 @@
+#ifndef TIMER_H
+#define TIMER_H
+
 #include <chrono> // for std::chrono functions
 
 class Timer
@@ -20,3 +23,5 @@ public:
 		return std::chrono::duration_cast<second_type>(clock_type::now() - m_beg).count();
 	}
 };
+
+#endif
