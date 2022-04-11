@@ -4,7 +4,7 @@ Man I really need a better name for this project.
 
 ## About
 
-FFT is a library which implements FFT. The floor is floor. Water is wet.
+FFT is a library which implements the Fast Fourier Transform. The floor is floor. Water is wet.
 
 ## Installation
 
